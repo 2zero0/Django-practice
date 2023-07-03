@@ -9,6 +9,7 @@ from django.views.generic import (
     UpdateView,
     DeleteView,
 )
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Post, Comment, HashTag
 from .forms import PostForm, CommentForm, HashTagForm
 from django.urls import reverse_lazy, reverse
@@ -33,7 +34,7 @@ class Index(View):
         # context = DB에서 가져온 값
         context = {"posts": post_objs}
         # print(post_objs)
-        return render(request, "blog/board.html", context)
+        return render(request, "blog/post_list.html", context)
 
 
 # write
@@ -54,16 +55,39 @@ def write(request):
 
 # class (genericView 사용)
 # django 자체의 클래스 뷰 기능 강력, 편리
-class List(ListView):
-    model = Post  # 모델
-    template_name = "blog/post_list.html"  # 템플릿
-    context_object_name = "posts"  # 변수
+#class List(ListView):
+#    model = Post  # 모델
+#    template_name = "blog/post_list.html"  # 템플릿
+#    context_object_name = "posts"  # 변수 값의 이름
 
 
-class Write(CreateView):
-    model = Post  # 모델
-    form_class = PostForm  # 폼
-    success_url = reverse_lazy("blog:list")  # 성공시 보내줄 url
+#class Write(CreateView):
+#    model = Post  # 모델
+#    form_class = PostForm  # 폼
+#    success_url = reverse_lazy("blog:list")  # 성공시 보내줄 url
+
+class Write(LoginRequiredMixin ,View):
+    # Mixin: LoginRequiredMixin
+    # 이 클래스를 상속받게 되면 로그인 된 사람만 접근가능
+    def get(self, request): # 글 작성 화면
+        form = PostForm()
+        context = {
+            'form': form
+        }
+        return render(request, 'blog/post_form.html', context)
+    
+    def post(self, request): # submit시 동작
+        form = PostForm(request. POST)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.writer=request.user
+            post.save()
+            return redirect('blog:list')
+        form.add_error(None, '폼이 유효하지 않습니다.')
+        context = {
+            'form': form
+        }
+        return render(request, 'blog/post_form.html')
 
 
 class Detail(DetailView):
